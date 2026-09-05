@@ -18,7 +18,7 @@ const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const W=520,H=680,R=26,D=52,DY=Math.sqrt(3)*R,COLS=9,OX=39,OY=38,LAUNCH={x:260,y:614},LIMIT=553;
 
 // Sound is synthesized locally; initialize only after a user gesture.
-let audioContext,masterGain,soundOn=true;
+let audioContext,masterGain,soundOn=true,resumePending=false;
 try{soundOn=localStorage.getItem('facePuzzleSound')!=='off'}catch(e){}
 const soundButton=document.getElementById('sound');
 function soundUI(){soundButton.textContent=soundOn?'♪ 効果音 ON':'♪ 効果音 OFF';soundButton.setAttribute('aria-pressed',String(soundOn))}
@@ -33,6 +33,10 @@ function tone(frequency,end,duration,delay=0,volume=.5,wave='sine'){
  try{const start=audioContext.currentTime+delay,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=wave;o.frequency.setValueAtTime(frequency,start);o.frequency.exponentialRampToValueAtTime(end,start+duration);g.gain.setValueAtTime(0,start);g.gain.linearRampToValueAtTime(volume,start+.008);g.gain.exponentialRampToValueAtTime(.001,start+duration);o.connect(g);g.connect(masterGain);o.start(start);o.stop(start+duration+.02);o.onended=()=>{o.disconnect();g.disconnect()}}catch(e){}
 }
 function sfx(event){
+ if(!soundOn)return;
+ if(!audioContext)unlockAudio();
+ if(!audioContext||!masterGain)return;
+ if(audioContext.state!=='running'){if(!resumePending){resumePending=true;audioContext.resume().then(()=>{resumePending=false;if(audioContext.state==='running')sfx(event)}).catch(()=>{resumePending=false})}return}
  if(event==='bomb'){tone(95,28,.5,0,.9,'sawtooth');tone(180,40,.35,0,.6,'triangle')}
  if(event==='fire')tone(260,820,.13,0,.45,'triangle');
  if(event==='bounce')tone(850,520,.07,0,.25);
